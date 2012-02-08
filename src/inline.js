@@ -89,30 +89,6 @@ function stopRecording() {
   count = 0;
 }
 
-function dumpOctal(value, ia, off, size) {
-  value = value.toString(8);
-  var i,x;
-  var sum = 0;
-  // pad zeros
-  var zero = "0".charCodeAt(0);
-  if (size < value.length) {
-    throw new Error("Incompatible size");
-  }
-  for (i = 0; i < (size-value.length); i++) {
-    x = zero;
-    ia[off] = zero;
-    sum += zero;
-    off += 1;
-  }
-  for (i = 0; i < value.length; i++) {
-    x = value.charCodeAt(i);
-    ia[off] = x;
-    sum += x;
-    off += 1;
-  }
-  return sum;
-}
-
 function dumpString(value, ia, off, size) {
   var i,x;
   var sum = 0;
