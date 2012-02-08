@@ -69,7 +69,6 @@ function grabFrames() {
 }
 
 function grabFrame(){
-  count += 1;
   data = dataURItoBlob(canvas.toDataURL("image/png"));
   var name = "image-"+padLeft(count+"", 5)+".png";
   var header = createHeader( name, data.byteLength, "image/png" );
@@ -77,6 +76,7 @@ function grabFrame(){
   bb.append(header);
   bb.append(data)
   fw.write(bb.getBlob('tar/archive'));
+  count += 1;
 }
 
 
