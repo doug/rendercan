@@ -1,138 +1,178 @@
 chrome.extension.onRequest.addListener(
-  function(request, sender, sendResponse) {
-    console.log(sender.tab ?
-                "from a content script:" + sender.tab.url :
-                "from the extension");
+    function(request, sender, sendResponse) {
+      console.log(sender.tab ?
+        "from a content script:" + sender.tab.url :
+        "from the extension");
 
-    if (request.action == "record") {
+      if (request.action == "record") {
 
-    	if (recording) {
-    		console.log("stopping");
-    		recording = false;
-    	} else {
-    		console.log("starting");
-    		recording = true;
-      		sendResponse("recording");
-      		
-      		canvas = document.querySelector("canvas");
+        if (recording) {
+          console.log("stopping");
+          recording = false;
+        } else {
+          console.log("starting");
+          recording = true;
+          sendResponse("recording");
 
-			if( !canvas || !window.webkitRequestAnimationFrame) {
-				console.log("no request animation frame...");
-				return;
-			}
+          canvas = document.querySelector("canvas");
 
-     		window.webkitRequestFileSystem( window.TEMPORARY, 1024*1024, initRecord, errorHandler );	
- 	 	}   		
-   	} else {
-      sendResponse({}); // snub them.
-  	}  
-});
+          if( !canvas || !window.webkitRequestAnimationFrame) {
+            console.log("no request animation frame...");
+            return;
+          }
+
+          window.webkitRequestFileSystem( window.TEMPORARY, 1024*1024, initRecord, errorHandler );
+        }
+      } else {
+        sendResponse({}); // snub them.
+      }
+    });
 
 var count, recording, fe, fw, canvas;
 
 function initRecord(fs){
-	fs.root.getFile( "frames.tar", {create: true}, function(fileEntry) {
+  fs.root.getFile( "frames.tar", {create: true}, function(fileEntry) {
 
-	// Create a FileWriter object for our FileEntry (log.txt).
-	fileEntry.createWriter(function(fileWriter) {
+    // Create a FileWriter object for our FileEntry (log.txt).
+    fileEntry.createWriter(function(fileWriter) {
 
-	  fileWriter.onwriteend = function(e) {
-	    if(recording) {
-			console.log( 'writing', count );
-	    	window.webkitRequestAnimationFrame(grabFrames);
-		} else {
-			console.log("done");
-			stopRecording();
-		}
-	  };
+      fileWriter.onwriteend = function(e) {
+        if(recording) {
+          console.log( 'writing', count );
+          window.webkitRequestAnimationFrame(grabFrames);
+        } else {
+          console.log("done");
+          stopRecording();
+        }
+      };
 
-	  fileWriter.onerror = function(e) {
-	    console.log('Write failed: ' + e.toString());
-	  };
+      fileWriter.onerror = function(e) {
+        console.log('Write failed: ' + e.toString());
+      };
 
-	  fe = fileEntry;
-	  fw = fileWriter;
+      fe = fileEntry;
+      fw = fileWriter;
 
-	  startRecording()
+      startRecording()
 
-	}, errorHandler);
+    }, errorHandler);
 
-	}, errorHandler);	
+  }, errorHandler);
 
 }
 
 function grabFrames() {
-	grabFrame();
+  grabFrame();
 }
 
 function grabFrame(){
-	console.log("grabbing frame");
-	count += 1;
-	data = dataURItoBlob(canvas.toDataURL("image/png"));
-	var name = "image-"+count+".png";
-	var header = createHeader( name, data.byteLength, "image/png" );
-	var bb = new window.WebKitBlobBuilder();
-    bb.append(header);
-    bb.append(data)
-	fw.write(bb.getBlob('tar/archive'));
+  console.log("grabbing frame");
+  count += 1;
+  data = dataURItoBlob(canvas.toDataURL("image/png"));
+  var name = "image-"+count+".png";
+  var header = createHeader( name, data.byteLength, "image/png" );
+  var bb = new window.WebKitBlobBuilder();
+  bb.append(header);
+  bb.append(data)
+  fw.write(bb.getBlob('tar/archive'));
 }
 
 
 function startRecording(canvas) {
-	count = 0;
-	grabFrames();
+  count = 0;
+  grabFrames();
 }
 
 function stopRecording() {
-	var url = fe.toURL();
-	console.log(url);
-	document.body.innerHTML = "<a href='"+url+"'>link</a>";
-	count = 0;
+  var url = fe.toURL();
+  console.log(url);
+  document.body.innerHTML = "<a href='"+url+"'>link</a>";
+  count = 0;
+}
+
+function dumpOctal(value, ia, off, size) {
+  value = value.toString(8);
+  var i,x;
+  var sum = 0;
+  // pad zeros
+  var zero = "0".charCodeAt(0);
+  if (size < value.length) {
+    throw new Error("Incompatible size");
+  }
+  for (i = 0; i < (size-value.length); i++) {
+    x = zero;
+    ia[off] = zero;
+    sum += zero;
+    off += 1;
+  }
+  for (i = 0; i < value.length; i++) {
+    x = value.charCodeAt(i);
+    ia[off] = x;
+    sum += x;
+    off += 1;
+  }
+  return sum;
+}
+
+function dumpString(value, ia, off, size) {
+  var i,x;
+  var sum = 0;
+  var len = Math.min(value.length, size);
+  for (i = 0; i < len; i++) {
+    x = value.charCodeAt(i);
+    ia[off] = x;
+    sum += x;
+    off += 1;
+  }
+  return sum;
 }
 
 function createHeader( name, size, type ){
-	var ab = new ArrayBuffer(512);
-    var ia = new Uint8Array(ab);
-    for (var i = 0; i < name.length; i++) {
-        ia[i] = name.charCodeAt(i);
-    }
-    ia[128] = size >> 56
-    ia[129] = size >> 48
-    ia[130] = size >> 40
-    ia[131] = size >> 32
-    ia[132] = size >> 24
-    ia[133] = size >> 16
-    ia[134] = size >> 8
-    ia[135] = size
-    return ab;
-	// var bb = new window.WebKitBlobBuilder();
- //    bb.append(ab);
- //    return bb.getBlob(type);
+  var ab = new ArrayBuffer(512);
+  var ia = new Uint8Array(ab);
+  var sum = 0;
+  sum += dumpString(name, ia, 0, 99);
+  sum += dumpString(size.toString(8), ia, 124, 12);
+  sum += dumpString("000644", ia, 100, 8)
+  // timestamp
+  var ts = new Date().getTime();
+  ts = Math.floor(ts/1000);
+  sum += dumpString(ts.toString(8), ia, 136, 12);
+
+  // extra header info
+  sum += dumpString("0", ia, 156, 1);
+  sum += dumpString("ustar ", ia, 257, 6);
+  sum += dumpString(" ", ia, 263, 2);
+
+  // assume checksum to be 8 spaces
+  sum += 8*32;
+  console.log("checksum", sum);
+  //checksum 6 digit octal followed by null and space
+  dumpOctal(sum, ia, 148, 6);
+  ia[155] = 32;
+  return ab;
 }
 
 function dataURItoBlob(dataURI) {
-    // convert base64 to raw binary data held in a string
-    // doesn't handle URLEncoded DataURIs
-    var byteString = atob(dataURI.split(',')[1]);
+  // convert base64 to raw binary data held in a string
+  // doesn't handle URLEncoded DataURIs
+  var byteString = atob(dataURI.split(',')[1]);
 
-    // separate out the mime component
-    var mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0]
+  // separate out the mime component
+  var mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
 
-    // write the bytes of the string to an ArrayBuffer
-    var ab = new ArrayBuffer(byteString.length);
-    var ia = new Uint8Array(ab);
-    for (var i = 0; i < byteString.length; i++) {
-        ia[i] = byteString.charCodeAt(i);
-    }
+  // write the bytes of the string to an ArrayBuffer
+  var padding = 512 - (byteString.length % 512);
+  var ab = new ArrayBuffer(byteString.length + padding);
+  var ia = new Uint8Array(ab);
+  for (var i = 0; i < byteString.length; i++) {
+    ia[i] = byteString.charCodeAt(i);
+  }
 
-    return ab;
-    // // write the ArrayBuffer to a blob, and you're done
-    // var bb = new window.WebKitBlobBuilder();
-    // bb.append(ab);
-    // return bb.getBlob(mimeString);
+  return ab;
 }
 
 function errorHandler( e ){
-	console.log(e);
+  console.log(e);
 }
 
