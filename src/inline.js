@@ -66,7 +66,6 @@ function grabFrames() {
 }
 
 function grabFrame(){
-  console.log("grabbing frame");
   count += 1;
   data = dataURItoBlob(canvas.toDataURL("image/png"));
   var name = "image-"+count+".png";
@@ -85,7 +84,6 @@ function startRecording(canvas) {
 
 function stopRecording() {
   var url = fe.toURL();
-  console.log(url);
   document.body.innerHTML = "<a href='"+url+"'>link</a>";
   count = 0;
 }
@@ -127,13 +125,24 @@ function dumpString(value, ia, off, size) {
   return sum;
 }
 
+function padLeft(value, size) {
+  if (size < value.length) {
+    throw new Error("Incompatible size");
+  }
+  var l = size-value.length;
+  for (var i = 0; i < l; i++) {
+    value = "0" + value;
+  }
+  return value;
+}
+
 function createHeader( name, size, type ){
   var ab = new ArrayBuffer(512);
   var ia = new Uint8Array(ab);
   var sum = 0;
   sum += dumpString(name, ia, 0, 99);
   sum += dumpString(size.toString(8), ia, 124, 12);
-  sum += dumpString("000644", ia, 100, 8)
+  sum += dumpString(padLeft("644 \0", 8), ia, 100, 8)
   // timestamp
   var ts = new Date().getTime();
   ts = Math.floor(ts/1000);
@@ -142,14 +151,12 @@ function createHeader( name, size, type ){
   // extra header info
   sum += dumpString("0", ia, 156, 1);
   sum += dumpString("ustar ", ia, 257, 6);
-  sum += dumpString(" ", ia, 263, 2);
+  sum += dumpString("00", ia, 263, 2);
 
   // assume checksum to be 8 spaces
   sum += 8*32;
-  console.log("checksum", sum);
   //checksum 6 digit octal followed by null and space
-  dumpOctal(sum, ia, 148, 6);
-  ia[155] = 32;
+  dumpString(padLeft(sum.toString(8)+"\0 ", 8), ia, 148, 8)
   return ab;
 }
 
