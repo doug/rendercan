@@ -84,6 +84,7 @@ function startRecording(canvas) {
 
 function stopRecording() {
   var url = fe.toURL();
+  console.log(url);
   document.body.innerHTML = "<a href='"+url+"'>link</a>";
   count = 0;
 }
