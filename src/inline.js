@@ -38,7 +38,6 @@ function initRecord(fs){
 
       fileWriter.onwriteend = function(e) {
         if(recording) {
-          console.log( 'writing', count );
           window.webkitRequestAnimationFrame(grabFrames);
         } else {
           console.log("done");
@@ -68,7 +67,7 @@ function grabFrames() {
 function grabFrame(){
   count += 1;
   data = dataURItoBlob(canvas.toDataURL("image/png"));
-  var name = "image-"+count+".png";
+  var name = "image-"+padLeft(count+"", 5)+".png";
   var header = createHeader( name, data.byteLength, "image/png" );
   var bb = new window.WebKitBlobBuilder();
   bb.append(header);
