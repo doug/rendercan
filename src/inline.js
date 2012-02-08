@@ -33,8 +33,8 @@ var count, recording, fe, fw, canvas;
 function initRecord(fs){
   // delete any previous
   fs.root.getFile( "frames.tar", {create: false}, function(fileEntry) {
-    fileEntry.remove();
-  });
+    fileEntry.remove(errorHandler,errorHandler);    
+  }, errorHandler );
   fs.root.getFile( "frames.tar", {create: true}, function(fileEntry) {
 
     // Create a FileWriter object for our FileEntry (log.txt).
