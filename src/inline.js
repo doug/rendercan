@@ -46,7 +46,7 @@ function initRecord(fs){
 
         fileWriter.onwriteend = function(e) {
           if(recording) {
-            window.requestAnimationFrame(grabFrames);
+            window.requestAnimationFrame(grabFrame);
           } else {
             console.log("done");
             stopRecording();
@@ -72,10 +72,6 @@ function initRecord(fs){
   }, create );
 }
 
-function grabFrames() {
-  grabFrame();
-}
-
 function grabFrame(){
   data = dataURItoBlob(canvas.toDataURL("image/png"));
   var name = "image-"+padLeft(count+"", 5)+".png";
@@ -88,9 +84,9 @@ function grabFrame(){
 }
 
 
-function startRecording(canvas) {
+function startRecording() {
   count = 0;
-  grabFrames();
+  window.requestAnimationFrame(grabFrame)
 }
 
 function stopRecording() {
