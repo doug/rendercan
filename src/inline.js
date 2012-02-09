@@ -21,47 +21,55 @@ chrome.extension.onRequest.addListener(
             return;
           }
 
-          window.webkitRequestFileSystem( window.TEMPORARY, 1024*1024, initRecord, errorHandler );
+          window.requestFileSystem( window.TEMPORARY, 1024*1024, initRecord, errorHandler );
         }
       } else {
         sendResponse({}); // snub them.
       }
     });
 
+
+// Name standardization
+window.requestFileSystem  = window.requestFileSystem || window.webkitRequestFileSystem;
+window.BlobBuilder = window.BlobBuilder || window.WebKitBlobBuilder;
+window.requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame;
+
+// Globals
 var count, recording, fe, fw, canvas;
 
 function initRecord(fs){
-  // delete any previous
-  fs.root.getFile( "frames.tar", {create: false}, function(fileEntry) {
-    fileEntry.remove(errorHandler,errorHandler);    
-  }, errorHandler );
-  fs.root.getFile( "frames.tar", {create: true}, function(fileEntry) {
+  var create = function() {
+    fs.root.getFile( "frames.tar", {create: true}, function(fileEntry) {
 
-    // Create a FileWriter object for our FileEntry (log.txt).
-    fileEntry.createWriter(function(fileWriter) {
+      // Create a FileWriter object for our FileEntry (log.txt).
+      fileEntry.createWriter(function(fileWriter) {
 
-      fileWriter.onwriteend = function(e) {
-        if(recording) {
-          window.webkitRequestAnimationFrame(grabFrames);
-        } else {
-          console.log("done");
-          stopRecording();
-        }
-      };
+        fileWriter.onwriteend = function(e) {
+          if(recording) {
+            window.requestAnimationFrame(grabFrames);
+          } else {
+            console.log("done");
+            stopRecording();
+          }
+        };
 
-      fileWriter.onerror = function(e) {
-        console.log('Write failed: ' + e.toString());
-      };
+        fileWriter.onerror = function(e) {
+          console.log('Write failed: ' + e.toString());
+        };
 
-      fe = fileEntry;
-      fw = fileWriter;
+        fe = fileEntry;
+        fw = fileWriter;
 
-      startRecording()
+        startRecording()
+
+      }, errorHandler);
 
     }, errorHandler);
-
-  }, errorHandler);
-
+  };
+  // delete any previous
+  fs.root.getFile( "frames.tar", {create: false}, function(fileEntry) {
+    fileEntry.remove(create, errorHandler);
+  }, create );
 }
 
 function grabFrames() {
@@ -72,7 +80,7 @@ function grabFrame(){
   data = dataURItoBlob(canvas.toDataURL("image/png"));
   var name = "image-"+padLeft(count+"", 5)+".png";
   var header = createHeader( name, data.byteLength, "image/png" );
-  var bb = new window.WebKitBlobBuilder();
+  var bb = new window.BlobBuilder();
   bb.append(header);
   bb.append(data)
   fw.write(bb.getBlob('tar/archive'));
@@ -88,7 +96,8 @@ function startRecording(canvas) {
 function stopRecording() {
   var url = fe.toURL();
   console.log(url);
-  document.body.innerHTML = "<a href='"+url+"'>link</a>";
+  window.open(url, "_newtab");
+  //document.body.innerHTML = "<a href='"+url+"'>link</a>";
   count = 0;
 }
 
