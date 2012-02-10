@@ -74,7 +74,7 @@ function initRecord(fs){
 
 function grabFrame(){
   data = dataURItoBlob(canvas.toDataURL("image/png"));
-  var name = "image-"+padLeft(count+"", 5)+".png";
+  var name = "image-"+padLeft(count+"", 9)+".png";
   var header = createHeader( name, data.byteLength, "image/png" );
   var bb = new window.BlobBuilder();
   bb.append(header);
