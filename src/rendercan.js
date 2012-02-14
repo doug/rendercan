@@ -1,13 +1,13 @@
 var rendercan = (function() {
 
   function start() {
-    console.log("Rendercan: starting.");
+    log("Starting.");
     recording = true;
 
     canvii = document.querySelectorAll("canvas");
 
     if( canvii.length == 0 || !window.requestAnimationFrame) {
-      console.log("no request animation frame or canvas");
+      log("No request animation frame or canvas");
       return;
     }
 
@@ -27,14 +27,41 @@ var rendercan = (function() {
   }
 
   function stop() {
-    console.log("Rendercan: stopping.");
+    log("Stopping.");
     recording = false;
   }
 
   // Name standardization
+  //window.requestFileSystem  = window.requestFileSystem || window.webkitRequestFileSystem;
+  //window.BlobBuilder = window.BlobBuilder || window.WebKitBlobBuilder;
+  //window.requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame;
+
+  // Name standardization
   window.requestFileSystem  = window.requestFileSystem || window.webkitRequestFileSystem;
   window.BlobBuilder = window.BlobBuilder || window.WebKitBlobBuilder;
-  window.requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame;
+
+  var ns = {};
+  ns.requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame;
+  // Don't actually need requestAnimationFrame because we are not disk limited.
+  ns.requestAnimationFrame = function(callback) { callback.call(); };
+
+  var RAFcallbacks = [];
+
+  function RAFreplace() {
+    window.requestAnimationFrame = function(callback) {
+      RAFcallbacks.push(callback);
+    }
+    window.webkitRequestAnimationFrame = window.requestAnimationFrame;
+  }
+
+  function RAFtrigger() {
+    RAFcallbacks.forEach(function(callback,i) {
+      callback.call();
+    });
+    RAFcallbacks = [];
+  }
+
+  RAFreplace();
 
   // Globals
   var count, recording, fe, fw, canvii, canviinames;
@@ -47,16 +74,17 @@ var rendercan = (function() {
         fileEntry.createWriter(function(fileWriter) {
 
           fileWriter.onwriteend = function(e) {
+            log("Write end");
             if(recording) {
-              window.requestAnimationFrame(grabFrames);
+              ns.requestAnimationFrame(grabFrames);
             } else {
-              console.log("Rendercan: finished.");
+              log("Finished.");
               stopRecording();
             }
           };
 
           fileWriter.onerror = function(e) {
-            console.log('Rendercan: Write failed: ' + e.toString());
+            log('Write failed: ' + e.toString());
           };
 
           fe = fileEntry;
@@ -85,17 +113,18 @@ var rendercan = (function() {
     }
     fw.write(bb.getBlob('tar/archive'));
     count += 1;
+    RAFtrigger();
   }
 
 
   function startRecording() {
     count = 0;
-    window.requestAnimationFrame(grabFrames)
+    ns.requestAnimationFrame(grabFrames);
   }
 
   function stopRecording() {
     var url = fe.toURL();
-    console.log("Rendercan: Frames saved to ", url);
+    log("Frames saved to ", url);
     window.open(url, "_newtab");
     //document.body.innerHTML = "<a href='"+url+"'>link</a>";
     count = 0;
@@ -169,7 +198,13 @@ var rendercan = (function() {
   }
 
   function errorHandler( e ){
-    console.log("Rendercan: error ", e);
+    log("Error", e);
+  }
+
+  function log() {
+    var args = Array.prototype.slice.call(arguments);
+    args.unshift("[rendercan]");
+    console.log.apply(console, args)
   }
 
   return {
