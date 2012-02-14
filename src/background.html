@@ -1,21 +1,8 @@
 <!doctype html>
 <html>
-<head>
-<script>
-
-</script>
-</head>
-<body>
-  <script type="text/javascript">
-    console.log("running rendercan");
-    chrome.browserAction.onClicked.addListener( function(tab) {
-
-      chrome.tabs.sendRequest( tab.id, {action: "record"}, function(response) {
-        
-      });
-
-    });
-
-  </script>
-</body>
+  <head>
+  </head>
+  <body>
+    <script type="text/javascript" src="background.js"></script>
+  </body>
 </html>
