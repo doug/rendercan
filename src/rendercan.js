@@ -74,7 +74,6 @@ var rendercan = (function() {
         fileEntry.createWriter(function(fileWriter) {
 
           fileWriter.onwriteend = function(e) {
-            log("Write end");
             if(recording) {
               ns.requestAnimationFrame(grabFrames);
             } else {
