@@ -6,7 +6,7 @@ var rendercan = (function() {
 
     canvii = document.querySelectorAll("canvas");
 
-    if( canvii.length == 0 || !window.requestAnimationFrame) {
+    if( canvii.length == 0 || !(window.webkitRequestAnimationFrame || window.requestAnimationFrame)) {
       log("No request animation frame or canvas");
       return;
     }
@@ -32,36 +32,9 @@ var rendercan = (function() {
   }
 
   // Name standardization
-  //window.requestFileSystem  = window.requestFileSystem || window.webkitRequestFileSystem;
-  //window.BlobBuilder = window.BlobBuilder || window.WebKitBlobBuilder;
-  //window.requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame;
-
-  // Name standardization
   window.requestFileSystem  = window.requestFileSystem || window.webkitRequestFileSystem;
   window.BlobBuilder = window.BlobBuilder || window.WebKitBlobBuilder;
-
-  var ns = {};
-  ns.requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame;
-  // Don't actually need requestAnimationFrame because we are not disk limited.
-  ns.requestAnimationFrame = function(callback) { callback.call(); };
-
-  var RAFcallbacks = [];
-
-  function RAFreplace() {
-    window.requestAnimationFrame = function(callback) {
-      RAFcallbacks.push(callback);
-    }
-    window.webkitRequestAnimationFrame = window.requestAnimationFrame;
-  }
-
-  function RAFtrigger() {
-    RAFcallbacks.forEach(function(callback,i) {
-      callback.call();
-    });
-    RAFcallbacks = [];
-  }
-
-  RAFreplace();
+  window.requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame;
 
   // Globals
   var count, recording, fe, fw, canvii, canviinames;
@@ -75,7 +48,9 @@ var rendercan = (function() {
 
           fileWriter.onwriteend = function(e) {
             if(recording) {
-              ns.requestAnimationFrame(grabFrames);
+              log("Write end.");
+              //ns.requestAnimationFrame(grabFrames);
+              window.requestAnimationFrame(grabFrames);
             } else {
               log("Finished.");
               stopRecording();
@@ -112,13 +87,12 @@ var rendercan = (function() {
     }
     fw.write(bb.getBlob('tar/archive'));
     count += 1;
-    RAFtrigger();
   }
 
 
   function startRecording() {
     count = 0;
-    ns.requestAnimationFrame(grabFrames);
+    window.requestAnimationFrame(grabFrames);
   }
 
   function stopRecording() {
