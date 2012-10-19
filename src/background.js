@@ -1,8 +1,8 @@
-chrome.browserAction.onClicked.addListener( function(tab) {
+chrome.browserAction.onClicked.addListener(function(tab) {
 
   if (recording[tab.id]) {
     console.log("[rendercan] stop recording on tab ", tab.id);
-    recording = false;
+    recording[tab.id] = false;
     // post stop
     chrome.tabs.executeScript(tab.id, { code: 'rendercan.stop();' });
   } else {

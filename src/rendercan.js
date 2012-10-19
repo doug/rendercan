@@ -33,7 +33,6 @@ var rendercan = (function() {
 
   // Name standardization
   window.requestFileSystem  = window.requestFileSystem || window.webkitRequestFileSystem;
-  window.BlobBuilder = window.BlobBuilder || window.WebKitBlobBuilder;
   window.requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame;
 
   // Globals
@@ -77,15 +76,20 @@ var rendercan = (function() {
   }
 
   function grabFrames(){
-    var bb = new window.BlobBuilder();
+    // var bb = new window.Blob();
+    var parts = []
     for (var i=0,l=canvii.length; i<l; i++) {
       data = dataURItoBlob(canvii[i].toDataURL("image/png"));
       var name = canviinames[i]+"-"+padLeft(count+"", 9)+".png";
       var header = createHeader( name, data.byteLength, "image/png" );
-      bb.append(header);
-      bb.append(data)
+      parts.push(header);
+      parts.push(data);
+      // bb.append(header);
+      // bb.append(data)
     }
-    fw.write(bb.getBlob('tar/archive'));
+    var bb = new window.Blob(parts, {"type": "tar/archive"});
+    // fw.write(bb.getBlob('tar/archive'));
+    fw.write(bb);
     count += 1;
   }
 
@@ -128,8 +132,8 @@ var rendercan = (function() {
   }
 
   function createHeader( name, size, type ){
-    var ab = new ArrayBuffer(512);
-    var ia = new Uint8Array(ab);
+    // var ab = new ArrayBufferView(512);
+    var ia = new Uint8Array(512);
     var sum = 0;
     sum += dumpString(name, ia, 0, 99);
     sum += dumpString(size.toString(8), ia, 124, 12);
@@ -147,8 +151,8 @@ var rendercan = (function() {
     // assume checksum to be 8 spaces
     sum += 8*32;
     //checksum 6 digit octal followed by null and space
-    dumpString(padLeft(sum.toString(8)+"\0 ", 8), ia, 148, 8)
-      return ab;
+    dumpString(padLeft(sum.toString(8)+"\0 ", 8), ia, 148, 8);
+    return ia;
   }
 
   function dataURItoBlob(dataURI) {
@@ -161,13 +165,14 @@ var rendercan = (function() {
 
     // write the bytes of the string to an ArrayBuffer
     var padding = 512 - (byteString.length % 512);
-    var ab = new ArrayBuffer(byteString.length + padding);
-    var ia = new Uint8Array(ab);
+    // var ab = new ArrayBuffer(byteString.length + padding);
+    // var ia = new Uint8Array(ab);
+    var ia = new Uint8Array(byteString.length + padding);
     for (var i = 0; i < byteString.length; i++) {
       ia[i] = byteString.charCodeAt(i);
     }
 
-    return ab;
+    return ia;
   }
 
   function errorHandler( e ){
