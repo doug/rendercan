@@ -1,0 +1,1 @@
+Install the chrome extension as an unpackaged extension. Then on any site with requestAnimationFrame and an animated canvas (2d or webgl) it will render an image of each of the frames and name them in order and export. You can then use ffmpeg or some other tool to create a video or animated gif from the frames.
