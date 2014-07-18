@@ -4,7 +4,7 @@ var rendercan = (function() {
     log("Starting.");
     recording = true;
 
-    canvii = document.querySelectorAll("canvas");
+    canvii = document.querySelectorAll("html /deep/ canvas");
 
     if( canvii.length == 0 || !(window.webkitRequestAnimationFrame || window.requestAnimationFrame)) {
       log("No request animation frame or canvas");
