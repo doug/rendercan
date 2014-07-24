@@ -21,7 +21,10 @@ var rendercan = (function() {
       var RATE = 16.66666666; // 1/60 * 1000
       var current_millis = window._Date.now();
       window.Date = function() {
-        return new window._Date(current_millis);
+        if (arguments.length === 0) {
+          return new window._Date(current_millis);
+        }
+        return new window._Date.apply(this, arguments);
       }
       window.Date.prototype = new Date();
       window.Date.now = function() {
