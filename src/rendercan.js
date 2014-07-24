@@ -1,5 +1,54 @@
 var rendercan = (function() {
 
+  function inject(fun) {
+    var script = document.createElement('script');
+    script.textContent = '(' + fun + ')();';
+    (document.head||document.documentElement).appendChild(script);
+    script.parentNode.removeChild(script);
+  }
+
+  // inject some globals
+  inject(function() {
+    window._Date = window.Date;
+    window._performanceNow = window.performance.now;
+    window._DateOverride = false;
+  });
+
+  // inject a date override to local scope
+  function overrideDate() {
+    inject(function() {
+      window._DateOverride = true;
+      var RATE = 16.66666666; // 1/60 * 1000
+      var current_millis = window._Date.now();
+      window.Date = function() {
+        return new window._Date(current_millis);
+      }
+      window.Date.prototype = new Date();
+      window.Date.now = function() {
+        return current_millis;
+      };
+      window.performance.now = function() {
+        return current_millis - window.performance.timing.navigationStart;
+      }
+      function loop() {
+        current_millis += RATE;
+        if (window._DateOverride) {
+          requestAnimationFrame(loop);
+        }
+      }
+      loop();
+    });
+  }
+
+  // inject a date restore to local scope
+  function restoreDate() {
+    inject(function() {
+      window._DateOverride = false;
+      window.Date = window._Date;
+      window.performance.now = window._performanceNow;
+    });
+  }
+
   function start() {
     log("Starting.");
     recording = true;
@@ -75,8 +124,8 @@ var rendercan = (function() {
     }, create );
   }
 
-  function grabFrames(){
-    // var bb = new window.Blob();
+  function grabFrames() {
+    // write parts to tar
     var parts = []
     for (var i=0,l=canvii.length; i<l; i++) {
       data = dataURItoBlob(canvii[i].toDataURL("image/png"));
@@ -84,17 +133,15 @@ var rendercan = (function() {
       var header = createHeader( name, data.byteLength, "image/png" );
       parts.push(header);
       parts.push(data);
-      // bb.append(header);
-      // bb.append(data)
     }
     var bb = new window.Blob(parts, {"type": "tar/archive"});
-    // fw.write(bb.getBlob('tar/archive'));
     fw.write(bb);
     count += 1;
   }
 
 
   function startRecording() {
+    overrideDate();
     count = 0;
     window.requestAnimationFrame(grabFrames);
   }
@@ -103,8 +150,8 @@ var rendercan = (function() {
     var url = fe.toURL();
     log("Frames saved to ", url);
     window.open(url, "_newtab");
-    //document.body.innerHTML = "<a href='"+url+"'>link</a>";
     count = 0;
+    restoreDate();
   }
 
   function dumpString(value, ia, off, size) {

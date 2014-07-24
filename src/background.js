@@ -9,11 +9,9 @@ chrome.browserAction.onClicked.addListener(function(tab) {
     console.log("[rendercan] start recording on tab ", tab.id);
     recording[tab.id] = true;
     if (!loaded[tab.id]) {
-      //inject script
       loaded[tab.id] = true;
-      chrome.tabs.executeScript(tab.id, {
-        file: 'rendercan.js'
-      }, function() {
+      //inject script
+      chrome.tabs.executeScript(tab.id, { file: 'rendercan.js' }, function() {
         // post start
         chrome.tabs.executeScript(tab.id, { code: 'rendercan.start();' });
       });
@@ -23,6 +21,12 @@ chrome.browserAction.onClicked.addListener(function(tab) {
     }
   }
 
+});
+
+// clean up after ourselves
+chrome.tabs.onRemoved.addListener(function(tab_id) {
+  delete recording[tab_id];
+  delete loaded[tab_id];
 });
 
 var recording = {};
