@@ -1,1 +1,0 @@
-convert -background none RenderCan*.svg RenderCan.png
