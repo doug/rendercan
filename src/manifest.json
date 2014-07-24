@@ -13,12 +13,11 @@
     "http://*/*"
   ],
   "icons": {
-    "128": "images/logo_128x128.png",
-    "48": "images/logo_128x128.png",
-    "16": "images/logo_128x128.png"
+    "128": "images/RenderCan-0.png",
+    "16": "images/RenderCan-3.png"
   },
   "browser_action": {
-    "default_icon": "images/logo_128x128.png",
+    "default_icon": "images/RenderCan-4.png",
     "default_title": "RenderCan"
   }
 }

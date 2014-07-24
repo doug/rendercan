@@ -1,11 +1,21 @@
 chrome.browserAction.onClicked.addListener(function(tab) {
 
   if (recording[tab.id]) {
+    chrome.browserAction.setIcon({
+      path: 'images/RenderCan-5.png'
+    })
     console.log("[rendercan] stop recording on tab ", tab.id);
     recording[tab.id] = false;
     // post stop
-    chrome.tabs.executeScript(tab.id, { code: 'rendercan.stop();' });
+    chrome.tabs.executeScript(tab.id, { code: 'rendercan.stop();' }, function() {
+      chrome.browserAction.setIcon({
+        path: 'images/RenderCan-4.png'
+      })
+    });
   } else {
+    chrome.browserAction.setIcon({
+      path: 'images/RenderCan-3.png'
+    })
     console.log("[rendercan] start recording on tab ", tab.id);
     recording[tab.id] = true;
     if (!loaded[tab.id]) {
