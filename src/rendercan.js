@@ -1,9 +1,10 @@
 var rendercan = (function() {
 
-  function inject(fun) {
-    var script = document.createElement('script');
+  function inject(fun, doc) {
+    doc = doc || document;
+    var script = doc.createElement('script');
     script.textContent = '(' + fun + ')();';
-    (document.head||document.documentElement).appendChild(script);
+    (doc.head||doc.documentElement).appendChild(script);
     script.parentNode.removeChild(script);
   }
 
@@ -57,9 +58,12 @@ var rendercan = (function() {
     recording = true;
 
     canvii = document.querySelectorAll("html /deep/ canvas");
+    svgs = document.querySelectorAll("html /deep/ svg");
 
-    if( canvii.length == 0 || !(window.webkitRequestAnimationFrame || window.requestAnimationFrame)) {
-      log("No request animation frame or canvas");
+    if( (canvii.length === 0 && svgs.length === 0) || !(window.webkitRequestAnimationFrame || window.requestAnimationFrame)) {
+      log("No request animation frame or canvas or svg.");
+      // TODO(doug) write an error back to background.js to inform the user.
+      alert("Could not find a canvas/svg element. Is it in an iframe?");
       return;
     }
 
@@ -75,6 +79,18 @@ var rendercan = (function() {
       canviinames.push(id);
     }
 
+    svgnames = [];
+    for (var i=0, l=svgs.length; i<l; i++) {
+      var id = svgs[i].id;
+      if (id == "") {
+        id = "svg";
+      }
+      if (svgnames.indexOf(id) != -1) {
+        id = id+i;
+      }
+      svgnames.push(id);
+    }
+
     window.requestFileSystem( window.TEMPORARY, 1024*1024, initRecord, errorHandler );
   }
 
@@ -88,7 +104,7 @@ var rendercan = (function() {
   window.requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame;
 
   // Globals
-  var count, recording, fe, fw, canvii, canviinames;
+  var count, recording, fe, fw, canvii, canviinames, svgs, svgnames;
 
   function initRecord(fs){
     var create = function() {
@@ -127,15 +143,28 @@ var rendercan = (function() {
     }, create );
   }
 
+  var svgHeader = '<?xml version="1.0" encoding="utf-8"?> <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"> <svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 WIDTH HEIGHT" enable-background="new 0 0 WIDTH HEIGHT" xml:space="preserve">';
+
   function grabFrames() {
     // write parts to tar
-    var parts = []
+    var parts = [];
+    var data;
     for (var i=0,l=canvii.length; i<l; i++) {
       data = dataURItoBlob(canvii[i].toDataURL("image/png"));
       var name = canviinames[i]+"-"+padLeft(count+"", 9)+".png";
-      var header = createHeader( name, data.byteLength, "image/png" );
+      var header = createHeader( name, data.length, "image/png" );
       parts.push(header);
-      parts.push(data);
+      parts.push(data.bytes);
+    }
+    for (var i=0,l=svgs.length; i<l; i++) {
+      var svg = svgs[i];
+      var header = svgHeader.replace(/WIDTH/g, svg.offsetWidth).replace(/HEIGHT/g, svg.offsetHeight);
+      svg = header + svg.innerHTML + '</svg>'
+      data = dataURItoBlob('data:image/svg+xml;base64,'+btoa(svg));
+      var name = svgnames[i]+"-"+padLeft(count+"", 9)+".svg";
+      var header = createHeader( name, data.length, "image/svg+xml" );
+      parts.push(header);
+      parts.push(data.bytes);
     }
     var bb = new window.Blob(parts, {"type": "tar/archive"});
     fw.write(bb);
@@ -144,7 +173,8 @@ var rendercan = (function() {
 
 
   function startRecording() {
-    overrideDate();
+    // defer overrideDate to ensure the globals are stashed.
+    setTimeout(overrideDate, 0);
     count = 0;
     window.requestAnimationFrame(grabFrames);
   }
@@ -205,7 +235,7 @@ var rendercan = (function() {
     return ia;
   }
 
-  function dataURItoBlob(dataURI) {
+  function dataURItoBlob(dataURI, pad) {
     // convert base64 to raw binary data held in a string
     // doesn't handle URLEncoded DataURIs
     var byteString = atob(dataURI.split(',')[1]);
@@ -213,16 +243,18 @@ var rendercan = (function() {
     // separate out the mime component
     var mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
 
-    // write the bytes of the string to an ArrayBuffer
+    // pad the data into 512 blocks per tar spec
     var padding = 512 - (byteString.length % 512);
-    // var ab = new ArrayBuffer(byteString.length + padding);
-    // var ia = new Uint8Array(ab);
+    // write the bytes of the string to an ArrayBuffer
     var ia = new Uint8Array(byteString.length + padding);
     for (var i = 0; i < byteString.length; i++) {
       ia[i] = byteString.charCodeAt(i);
     }
 
-    return ia;
+    return {
+      bytes: ia,
+      length: byteString.length
+    };
   }
 
   function errorHandler( e ){
