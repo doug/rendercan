@@ -56,6 +56,7 @@ var rendercan = (function() {
   function start() {
     log("Starting.");
     recording = true;
+    window.rendercan.recording = true;
 
     canvii = document.querySelectorAll("html /deep/ canvas");
     svgs = document.querySelectorAll("html /deep/ svg");
@@ -97,6 +98,7 @@ var rendercan = (function() {
   function stop() {
     log("Stopping.");
     recording = false;
+    window.rendercan.recording = false;
   }
 
   // Name standardization
