@@ -247,6 +247,10 @@ var rendercan = (function() {
 
     // pad the data into 512 blocks per tar spec
     var padding = 512 - (byteString.length % 512);
+    // if divisible by 512 no padding is needed
+    if (padding === 512) {
+      padding = 0;
+    }
     // write the bytes of the string to an ArrayBuffer
     var ia = new Uint8Array(byteString.length + padding);
     for (var i = 0; i < byteString.length; i++) {
