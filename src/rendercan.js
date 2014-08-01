@@ -1,70 +1,83 @@
 var rendercan = (function() {
 
-  function inject(fun, doc) {
-    doc = doc || document;
-    var script = doc.createElement('script');
-    script.textContent = '(' + fun + ')();';
-    (doc.head||doc.documentElement).appendChild(script);
-    script.parentNode.removeChild(script);
-  }
-
-  // inject some globals
-  inject(function() {
-    window._Date = window.Date;
-    window._performanceNow = window.performance.now;
-    window._DateOverride = false;
+  window.addEventListener("message", function(evt) {
+    switch(evt.data.rendercan) {
+      case 'record':
+        record();
+        break;
+      case 'stop':
+        stop();
+        break;
+      default:
+        break;
+    }
   });
 
+  window.onbeforeunload = function() {
+    if (recording) {
+      var resp = confirm([
+        "You are currently recording with RenderCan, ",
+        "are you sure you want to navigate away?"
+        ].join(""));
+      return resp;
+    }
+  }
+
+
+  // inject some globals
+  // Date
+  var _Date = window.Date;
+  var _performanceNow = window.performance.now;
+  var _DateOverride = false;
+
   // inject a date override to local scope
-  function overrideDate() {
-    inject(function() {
-      window._DateOverride = true;
-      var RATE = 16.66666666; // 1/60 * 1000
-      var current_millis = window._Date.now();
-      window.Date = function() {
-        if (arguments.length === 0) {
-          return new window._Date(current_millis);
-        }
-        return new window._Date.apply(this, arguments);
+  function override() {
+    // Date
+    _DateOverride = true;
+    var RATE = 16.66666666; // 1/60 * 1000
+    var current_millis = _Date.now();
+    window.Date = function() {
+      if (arguments.length === 0) {
+        return new _Date(current_millis);
       }
-      window.Date.prototype = new Date();
-      window.Date.now = function() {
-        return current_millis;
-      };
-      window.performance.now = function() {
-        return current_millis - window.performance.timing.navigationStart;
+      return new _Date.apply(this, arguments);
+    }
+    window.Date.prototype = new Date();
+    window.Date.now = function() {
+      return current_millis;
+    };
+    window.performance.now = function() {
+      return current_millis - window.performance.timing.navigationStart;
+    }
+    function loop() {
+      current_millis += RATE;
+      if (_DateOverride) {
+        requestAnimationFrame(loop);
       }
-      function loop() {
-        current_millis += RATE;
-        if (window._DateOverride) {
-          requestAnimationFrame(loop);
-        }
-      }
-      loop();
-    });
+    }
+    loop();
   }
 
   // inject a date restore to local scope
-  function restoreDate() {
-    inject(function() {
-      window._DateOverride = false;
-      window.Date = window._Date;
-      window.performance.now = window._performanceNow;
-    });
+  function restore() {
+    // Date
+    _DateOverride = false;
+    window.Date = _Date;
+    window.performance.now = _performanceNow;
   }
 
-  function start() {
+  function record() {
     log("Starting.");
     recording = true;
-    window.rendercan.recording = true;
 
     canvii = document.querySelectorAll("html /deep/ canvas");
     svgs = document.querySelectorAll("html /deep/ svg");
 
-    if( (canvii.length === 0 && svgs.length === 0) || !(window.webkitRequestAnimationFrame || window.requestAnimationFrame)) {
-      log("No request animation frame or canvas or svg.");
+    if (canvii.length === 0 && svgs.length === 0) {
+      log("No canvas or svg found on the page.");
       // TODO(doug) write an error back to background.js to inform the user.
       alert("Could not find a canvas/svg element. Is it in an iframe?");
+      window.postMessage({rendercan: 'stopped'}, '*');
       return;
     }
 
@@ -98,19 +111,19 @@ var rendercan = (function() {
   function stop() {
     log("Stopping.");
     recording = false;
-    window.rendercan.recording = false;
   }
 
   // Name standardization
   window.requestFileSystem  = window.requestFileSystem || window.webkitRequestFileSystem;
-  window.requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame;
 
   // Globals
   var count, recording, fe, fw, canvii, canviinames, svgs, svgnames;
 
-  function initRecord(fs){
+  function initRecord(fs) {
     var create = function() {
       fs.root.getFile( "frames.tar", {create: true}, function(fileEntry) {
+      
+        window.postMessage({rendercan: 'recording'}, '*');
 
         // Create a FileWriter object for our FileEntry (log.txt).
         fileEntry.createWriter(function(fileWriter) {
@@ -118,8 +131,7 @@ var rendercan = (function() {
           fileWriter.onwriteend = function(e) {
             if(recording) {
               log("Write end.");
-              //ns.requestAnimationFrame(grabFrames);
-              window.requestAnimationFrame(grabFrames);
+              requestAnimationFrame(grabFrames);
             } else {
               log("Finished.");
               stopRecording();
@@ -140,9 +152,9 @@ var rendercan = (function() {
       }, errorHandler);
     };
     // delete any previous
-    fs.root.getFile( "frames.tar", {create: false}, function(fileEntry) {
+    fs.root.getFile("frames.tar", {create: false}, function(fileEntry) {
       fileEntry.remove(create, errorHandler);
-    }, create );
+    }, create);
   }
 
   var svgHeader = '<?xml version="1.0" encoding="utf-8"?> <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"> <svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 WIDTH HEIGHT" enable-background="new 0 0 WIDTH HEIGHT" xml:space="preserve">';
@@ -173,20 +185,26 @@ var rendercan = (function() {
     count += 1;
   }
 
-
   function startRecording() {
     // defer overrideDate to ensure the globals are stashed.
-    setTimeout(overrideDate, 0);
+    // setTimeout(override, 0);
+    override();
     count = 0;
-    window.requestAnimationFrame(grabFrames);
+    requestAnimationFrame(grabFrames);
   }
 
   function stopRecording() {
     var url = fe.toURL();
-    log("Frames saved to ", url);
-    window.open(url, "_newtab");
+    log('Frames saved to ', url);
+    var a = document.createElement('a');
+    a.style = 'display: none';
+    document.body.appendChild(a);
+    a.href = url;
+    a.download = 'frames.tar';
+    a.click();
+    window.postMessage({rendercan: 'stopped'}, '*');
     count = 0;
-    restoreDate();
+    restore();
   }
 
   function dumpString(value, ia, off, size) {
@@ -274,7 +292,7 @@ var rendercan = (function() {
   }
 
   return {
-    start: start,
+    record: record,
     stop: stop
   };
 })();
