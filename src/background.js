@@ -120,9 +120,11 @@ chrome.browserAction.onClicked.addListener(function(tab) {
     });
   }
 
+  // TODO(doug): on unload or refrest stop.
 
   if (recording_tab !== undefined) {
     tab_id = recording_tab;
+    // TODO(doug): add try catch if the recording tab has been removed.
     chrome.tabs.update(recording_tab, {selected: true});
   }
   toggle();

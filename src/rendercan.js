@@ -28,14 +28,29 @@ var rendercan = (function() {
   // Date
   var _Date = window.Date;
   var _performanceNow = window.performance.now;
-  var _DateOverride = false;
+  var _requestAnimationFrame= window.requestAnimationFrame;
+  var _cancelAnimationFrame = window.cancelAnimationFrame;
+  var _RAFqueue = [];
+  var RATE = 1/60 * 1000;
+  var current_millis = _Date.now();
 
   // inject a date override to local scope
   function override() {
+    // RAF
+    var request;
+    // var lastRun;
+    window.requestAnimationFrame = function(callback, element) {
+      // add to pool
+      _RAFqueue.push(callback);
+      return callback;
+    }
+    window.cancelAnimationFrame = function(callback) {
+      var i = _RAFqueue.indexOf(callback);
+      if (i < 0) { return; }
+      _RAFqueue.splice(i,1);
+    }
     // Date
-    _DateOverride = true;
-    var RATE = 16.66666666; // 1/60 * 1000
-    var current_millis = _Date.now();
+    current_millis = _Date.now();
     window.Date = function() {
       if (arguments.length === 0) {
         return new _Date(current_millis);
@@ -48,22 +63,24 @@ var rendercan = (function() {
     };
     window.performance.now = function() {
       return current_millis - window.performance.timing.navigationStart;
-    }
-    function loop() {
-      current_millis += RATE;
-      if (_DateOverride) {
-        requestAnimationFrame(loop);
-      }
-    }
-    loop();
+    };
   }
 
   // inject a date restore to local scope
   function restore() {
+    // RAF
+    window.requestAnimationFrame = _requestAnimationFrame;
+    window.cancelAnimationFrame = _cancelAnimationFrame;
     // Date
-    _DateOverride = false;
     window.Date = _Date;
     window.performance.now = _performanceNow;
+
+    // flush RAF
+    var toRun = _RAFqueue.splice(0, _RAFqueue.length);
+    var now = Date.now();
+    toRun.forEach(function(callback) {
+      callback(now);
+    });
   }
 
   function record() {
@@ -131,7 +148,7 @@ var rendercan = (function() {
           fileWriter.onwriteend = function(e) {
             if(recording) {
               log("Write end.");
-              requestAnimationFrame(grabFrames);
+              _requestAnimationFrame(draw);
             } else {
               log("Finished.");
               stopRecording();
@@ -185,12 +202,25 @@ var rendercan = (function() {
     count += 1;
   }
 
+  function draw() {
+    // Execute things queued for the RAF
+    // must copy from RAFqueue first because it is modified by callbacks
+    current_millis += RATE;
+    var toRun = _RAFqueue.splice(0, _RAFqueue.length);
+    toRun.forEach(function(callback) {
+      callback(current_millis);
+    });
+
+    // Write the frame
+    grabFrames();
+  }
+
   function startRecording() {
     // defer overrideDate to ensure the globals are stashed.
     // setTimeout(override, 0);
     override();
     count = 0;
-    requestAnimationFrame(grabFrames);
+    _requestAnimationFrame(draw);
   }
 
   function stopRecording() {
@@ -202,6 +232,7 @@ var rendercan = (function() {
     a.href = url;
     a.download = 'frames.tar';
     a.click();
+    // TODO(doug): delete the frames after download
     window.postMessage({rendercan: 'stopped'}, '*');
     count = 0;
     restore();
