@@ -148,31 +148,37 @@ var rendercan = (function() {
         fileEntry.createWriter(function(fileWriter) {
 
           var rafRequest;
+          var hasError = false;
 
           fileWriter.onwriteend = function(e) {
+            if (hasError) {
+              return;
+            }
             if(recording) {
               log('Write end.');
               rafRequest = _requestAnimationFrame(draw);
             } else {
               log('Finished.');
               stopRecording();
+              // restore record in case of multiple writes
+              record = rendercan.record;
             }
           };
 
           fileWriter.onerror = function(e) {
             log('Write failed: ', e.currentTarget.error);
-            stop();
             // if (e.currentTarget.error.name === 'QuotaExceededError') {
+            //   hasError = true;
             //   _cancelAnimationFrame(rafRequest);
             //   download();
-            //   setTimeout(function() {
-            //     // delete it and create a new one
-            //     fs.root.getFile('frames.tar', {create: false}, function(fileEntry) {
-            //       fileEntry.remove(create, errorHandler);
-            //     }, create);
-            //   }, 0);
+            //   window.postMessage({rendercan: 'paused'}, '*');
+            //   // override record
+            //   record = function() {
+            //     hasError = false;
+            //     window.requestFileSystem( window.TEMPORARY, QUOTA, initRecord, errorHandler );
+            //   }
             // } else {
-            //   stop();
+              stop();
             // }
           };
 
@@ -220,9 +226,11 @@ var rendercan = (function() {
   }
 
   function draw() {
+    // Update the current time by constant tick
+    current_millis += RATE;
+    
     // Execute things queued for the RAF
     // must copy from RAFqueue first because it is modified by callbacks
-    current_millis += RATE;
     var toRun = _RAFqueue.splice(0, _RAFqueue.length);
     toRun.forEach(function(callback) {
       callback(current_millis);

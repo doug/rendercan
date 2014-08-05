@@ -1,7 +1,7 @@
 {
   "name": "RenderCan",
   "manifest_version": 2,
-  "version": "0.2.7",
+  "version": "0.2.8",
   "description": "A simple way to record a canvas. Convert to a movie with something like: `ffmpeg -r 60 -i canvas-%09d.png out.webm`",
   "background": {
     "scripts": [

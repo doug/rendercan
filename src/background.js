@@ -2,7 +2,8 @@ var STATE = {
   record: 'record',
   recording: 'recording',
   stop: 'stop',
-  stopped: 'stopped'
+  stopped: 'stopped',
+  paused: 'paused'
 };
 
 var recording_tab;
@@ -13,14 +14,14 @@ chrome.browserAction.setIcon({
   path: 'images/icon-default-38.png'
 });
 
-chrome.runtime.onMessage.addListener(function(req,src,resp) {
-  if (!req.rendercan) {
-    return;
-  }
-  state = req.rendercan;
+function setIcon() {
   switch(state) {
+    case STATE.paused:
+      chrome.browserAction.setIcon({
+        path: 'images/icon-saving-38.png'
+      });
+      break;
     case STATE.recording:
-      // pulse the recording icon
       var flipflop = 1;
       var pulse = function() {
         if (state === STATE.recording) {
@@ -36,10 +37,7 @@ chrome.runtime.onMessage.addListener(function(req,src,resp) {
           }
           setTimeout(pulse, 600);
         } else {
-          // reset icon to default on page change
-          chrome.browserAction.setIcon({
-            path: 'images/icon-default-38.png'
-          });
+          setIcon();
         }
       };
       pulse();
@@ -50,6 +48,14 @@ chrome.runtime.onMessage.addListener(function(req,src,resp) {
       });
       break;
   }
+}
+
+chrome.runtime.onMessage.addListener(function(req,src,resp) {
+  if (!req.rendercan) {
+    return;
+  }
+  state = req.rendercan;
+  setIcon();
 });
 
 chrome.browserAction.onClicked.addListener(function(tab) {
