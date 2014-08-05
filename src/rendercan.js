@@ -1,6 +1,6 @@
 var rendercan = (function() {
 
-  window.addEventListener("message", function(evt) {
+  window.addEventListener('message', function(evt) {
     switch(evt.data.rendercan) {
       case 'record':
         record();
@@ -16,9 +16,9 @@ var rendercan = (function() {
   window.onbeforeunload = function() {
     if (recording) {
       var resp = confirm([
-        "You are currently recording with RenderCan, ",
-        "are you sure you want to navigate away?"
-        ].join(""));
+        'You are currently recording with RenderCan, ',
+        'are you sure you want to navigate away?'
+        ].join(''));
       return resp;
     }
   }
@@ -33,6 +33,7 @@ var rendercan = (function() {
   var _RAFqueue = [];
   var RATE = 1/60 * 1000;
   var current_millis = _Date.now();
+  var QUOTA = 1024*1024*1024*10; // 10 Gb
 
   // inject a date override to local scope
   function override() {
@@ -84,16 +85,15 @@ var rendercan = (function() {
   }
 
   function record() {
-    log("Starting.");
+    log('Starting.');
     recording = true;
-
-    canvii = document.querySelectorAll("html /deep/ canvas");
-    svgs = document.querySelectorAll("html /deep/ svg");
+    canvii = document.querySelectorAll('html /deep/ canvas');
+    svgs = document.querySelectorAll('html /deep/ svg');
 
     if (canvii.length === 0 && svgs.length === 0) {
-      log("No canvas or svg found on the page.");
+      log('No canvas or svg found on the page.');
       // TODO(doug) write an error back to background.js to inform the user.
-      alert("Could not find a canvas/svg element. Is it in an iframe?");
+      alert('Could not find a canvas/svg element. Is it in an iframe?');
       window.postMessage({rendercan: 'stopped'}, '*');
       return;
     }
@@ -101,8 +101,8 @@ var rendercan = (function() {
     canviinames = [];
     for (var i=0, l=canvii.length; i<l; i++) {
       var id = canvii[i].id;
-      if (id == "") {
-        id = "canvas";
+      if (id == '') {
+        id = 'canvas';
       }
       if (canviinames.indexOf(id) != -1) {
         id = id+i;
@@ -113,8 +113,8 @@ var rendercan = (function() {
     svgnames = [];
     for (var i=0, l=svgs.length; i<l; i++) {
       var id = svgs[i].id;
-      if (id == "") {
-        id = "svg";
+      if (id == '') {
+        id = 'svg';
       }
       if (svgnames.indexOf(id) != -1) {
         id = id+i;
@@ -122,11 +122,13 @@ var rendercan = (function() {
       svgnames.push(id);
     }
 
-    window.requestFileSystem( window.TEMPORARY, 1024*1024, initRecord, errorHandler );
+    override();
+    count = 0;
+    window.requestFileSystem( window.TEMPORARY, QUOTA, initRecord, errorHandler );
   }
 
   function stop() {
-    log("Stopping.");
+    log('Stopping.');
     recording = false;
   }
 
@@ -138,38 +140,53 @@ var rendercan = (function() {
 
   function initRecord(fs) {
     var create = function() {
-      fs.root.getFile( "frames.tar", {create: true}, function(fileEntry) {
+      fs.root.getFile('frames.tar', {create: true}, function(fileEntry) {
       
         window.postMessage({rendercan: 'recording'}, '*');
 
         // Create a FileWriter object for our FileEntry (log.txt).
         fileEntry.createWriter(function(fileWriter) {
 
+          var rafRequest;
+
           fileWriter.onwriteend = function(e) {
             if(recording) {
-              log("Write end.");
-              _requestAnimationFrame(draw);
+              log('Write end.');
+              rafRequest = _requestAnimationFrame(draw);
             } else {
-              log("Finished.");
+              log('Finished.');
               stopRecording();
             }
           };
 
           fileWriter.onerror = function(e) {
-            log('Write failed: ' + e.toString());
+            log('Write failed: ', e.currentTarget.error);
+            stop();
+            // if (e.currentTarget.error.name === 'QuotaExceededError') {
+            //   _cancelAnimationFrame(rafRequest);
+            //   download();
+            //   setTimeout(function() {
+            //     // delete it and create a new one
+            //     fs.root.getFile('frames.tar', {create: false}, function(fileEntry) {
+            //       fileEntry.remove(create, errorHandler);
+            //     }, create);
+            //   }, 0);
+            // } else {
+            //   stop();
+            // }
           };
 
           fe = fileEntry;
           fw = fileWriter;
 
-          startRecording()
+          _requestAnimationFrame(draw);
 
         }, errorHandler);
 
       }, errorHandler);
     };
     // delete any previous
-    fs.root.getFile("frames.tar", {create: false}, function(fileEntry) {
+    fs.root.getFile('frames.tar', {create: false}, function(fileEntry) {
       fileEntry.remove(create, errorHandler);
     }, create);
   }
@@ -181,9 +198,9 @@ var rendercan = (function() {
     var parts = [];
     var data;
     for (var i=0,l=canvii.length; i<l; i++) {
-      data = dataURItoBlob(canvii[i].toDataURL("image/png"));
-      var name = canviinames[i]+"-"+padLeft(count+"", 9)+".png";
-      var header = createHeader( name, data.length, "image/png" );
+      data = dataURItoBlob(canvii[i].toDataURL('image/png'));
+      var name = canviinames[i]+'-'+padLeft(count+'', 9)+'.png';
+      var header = createHeader( name, data.length, 'image/png' );
       parts.push(header);
       parts.push(data.bytes);
     }
@@ -192,12 +209,12 @@ var rendercan = (function() {
       var header = svgHeader.replace(/WIDTH/g, svg.offsetWidth).replace(/HEIGHT/g, svg.offsetHeight);
       svg = header + svg.innerHTML + '</svg>'
       data = dataURItoBlob('data:image/svg+xml;base64,'+btoa(svg));
-      var name = svgnames[i]+"-"+padLeft(count+"", 9)+".svg";
-      var header = createHeader( name, data.length, "image/svg+xml" );
+      var name = svgnames[i]+'-'+padLeft(count+'', 9)+'.svg';
+      var header = createHeader( name, data.length, 'image/svg+xml' );
       parts.push(header);
       parts.push(data.bytes);
     }
-    var bb = new window.Blob(parts, {"type": "tar/archive"});
+    var bb = new window.Blob(parts, {'type': 'tar/archive'});
     fw.write(bb);
     count += 1;
   }
@@ -215,15 +232,7 @@ var rendercan = (function() {
     grabFrames();
   }
 
-  function startRecording() {
-    // defer overrideDate to ensure the globals are stashed.
-    // setTimeout(override, 0);
-    override();
-    count = 0;
-    _requestAnimationFrame(draw);
-  }
-
-  function stopRecording() {
+  function download() {
     var url = fe.toURL();
     log('Frames saved to ', url);
     var a = document.createElement('a');
@@ -232,7 +241,11 @@ var rendercan = (function() {
     a.href = url;
     a.download = 'frames.tar';
     a.click();
+  }
+
+  function stopRecording() {
     // TODO(doug): delete the frames after download
+    download();
     window.postMessage({rendercan: 'stopped'}, '*');
     count = 0;
     restore();
@@ -253,11 +266,11 @@ var rendercan = (function() {
 
   function padLeft(value, size) {
     if (size < value.length) {
-      throw new Error("Incompatible size");
+      throw new Error('Incompatible size');
     }
     var l = size-value.length;
     for (var i = 0; i < l; i++) {
-      value = "0" + value;
+      value = '0' + value;
     }
     return value;
   }
@@ -268,21 +281,21 @@ var rendercan = (function() {
     var sum = 0;
     sum += dumpString(name, ia, 0, 99);
     sum += dumpString(size.toString(8), ia, 124, 12);
-    sum += dumpString(padLeft("644 \0", 8), ia, 100, 8)
+    sum += dumpString(padLeft('644 \0', 8), ia, 100, 8)
       // timestamp
       var ts = new Date().getTime();
     ts = Math.floor(ts/1000);
     sum += dumpString(ts.toString(8), ia, 136, 12);
 
     // extra header info
-    sum += dumpString("0", ia, 156, 1);
-    sum += dumpString("ustar ", ia, 257, 6);
-    sum += dumpString("00", ia, 263, 2);
+    sum += dumpString('0', ia, 156, 1);
+    sum += dumpString('ustar ', ia, 257, 6);
+    sum += dumpString('00', ia, 263, 2);
 
     // assume checksum to be 8 spaces
     sum += 8*32;
     //checksum 6 digit octal followed by null and space
-    dumpString(padLeft(sum.toString(8)+"\0 ", 8), ia, 148, 8);
+    dumpString(padLeft(sum.toString(8)+'\0 ', 8), ia, 148, 8);
     return ia;
   }
 
@@ -313,12 +326,12 @@ var rendercan = (function() {
   }
 
   function errorHandler( e ){
-    log("Error", e);
+    log('Error', e);
   }
 
   function log() {
     var args = Array.prototype.slice.call(arguments);
-    args.unshift("[rendercan]");
+    args.unshift('[rendercan]');
     console.log.apply(console, args)
   }
 

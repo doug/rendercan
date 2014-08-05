@@ -80,7 +80,7 @@ chrome.browserAction.onClicked.addListener(function(tab) {
 
   function start_recording() {
     recording_tab = tab_id;
-    console.log("[rendercan] start recording on tab ", tab_id);
+    console.log('[rendercan] start recording on tab ', tab_id);
 
     chrome.browserAction.setIcon({
       path: 'images/icon-saving-38.png'
@@ -92,7 +92,7 @@ chrome.browserAction.onClicked.addListener(function(tab) {
 
   function stop_recording() {
     recording_tab = undefined;
-    console.log("[rendercan] stop recording on tab ", tab_id);
+    console.log('[rendercan] stop recording on tab ', tab_id);
 
     state = STATE.stop;
     send({rendercan: state});
