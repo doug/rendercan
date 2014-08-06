@@ -1,5 +1,7 @@
 #RenderCan
 
+Download the chrome extension: [https://chrome.google.com/webstore/detail/rendercan/enlfmgpmfaibbeoelliknejffljklemg](https://chrome.google.com/webstore/detail/rendercan/enlfmgpmfaibbeoelliknejffljklemg)
+
 A simple way to record a canvas. It will record any canvas elements on the page as well as any svg animations. When finished, all the frames will be downloaded into a single tar file. You can then use these raw images in any way you want. For example, to convert to a movie you can use something like: 
 
 ```ffmpeg -r 60 -i canvas-%09d.png out.mp4```
