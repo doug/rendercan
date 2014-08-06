@@ -8,6 +8,8 @@ A simple way to record a canvas. It will record any canvas elements on the page 
 
 The extension will temporarily override Date and performance.now so that time moves at 60fps constantly so that the output images are always consistent. Note: this can look like your project is animating slowly, but that is just so that the output frames are 60fps. Final note, frames are output on a requestAnimationFrame.
 
+To get the browser window to your desired size open devtools in Chrome, press escape, go to the emulation tab and there is a parameter for setting the screen size explicitly.
+
 There is a current bug when when the file size gets to >4.6Gb it runs out of temporary storage and stops recording. If someone has ideas on how to fix it please submit a pull request.
 
 Thanks,<br>
